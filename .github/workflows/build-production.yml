@@ -1,0 +1,30 @@
+name: Build production package
+on:
+  push:
+    branches: [main, production-ready]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install
+      - run: npm run build
+      - name: Add shared-hosting fallback
+        run: |
+          printf 'DirectoryIndex index.html\nOptions -Indexes\n<IfModule mod_rewrite.c>\nRewriteEngine On\nRewriteCond %%{REQUEST_FILENAME} !-f\nRewriteCond %%{REQUEST_FILENAME} !-d\nRewriteRule ^ index.html [L]\n</IfModule>\n' > dist/.htaccess
+      - name: Package cPanel upload
+        run: |
+          cd dist
+          zip -r ../elite-noir-production.zip . -x '*.DS_Store'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: elite-noir-production
+          path: elite-noir-production.zip
+          if-no-files-found: error
